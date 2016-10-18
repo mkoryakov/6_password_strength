@@ -1,61 +1,62 @@
 import argparse
+import os.path
 import re
 
 
-def is_password_include_words_form_blacklist(password):
-    blacklist = ['password', 'user', 'asdf', 'qwerty', 'wasd', 'jkl;', 'zxcvb']
+def get_passwords_from_blacklist(filepath):
+    if not os.path.exists(filepath):
+        return None
+    with open(filepath) as file_handler:
+        return file_handler.readlines()
+
+
+def is_password_in_blacklist(password, blacklist_handler):
     password_in_lower_chars = password.lower()
-    for word in blacklist:
-        if word in password_in_lower_chars:
+    for word in blacklist_handler:
+        if word.rstrip() == password_in_lower_chars:
             return True
     return False
 
 
-def is_password_include_date(password):
-    years = range(1900, 2016)
-    for year in years:
-        if str(year) in password:
-            return True
-    months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun;', 'jul', 'aug',
-              'sep', 'oct', 'nov', 'dec']
+def is_password_include_word_from_blacklist(password, blacklist_handler):
     password_in_lower_chars = password.lower()
-    for month in months:
-        if month in password_in_lower_chars:
+    for word in blacklist_handler:
+        if word.rstrip() in password_in_lower_chars:
             return True
     return False
 
 
-def is_password_include_name(password):
-    names = ['masha', 'sasha', 'pasha', 'dasha', 'vanya', 'katya;',
-             'zhenya', 'lena', 'petya', 'anna', 'dima', 'vika']
-    password_in_lower_chars = password.lower()
-    for name in names:
-        if name in password_in_lower_chars:
-            return True
-    return False
-
-
-def get_password_strength(password):
-    # шаблон для проверки на вхождение в пароль номеров
-    # телефона, лицензий и т.д.
-    re_pattern = re.compile('\d{5,}')
-    if len(password) < 5:
+def get_password_strength(password, passwords_from_blacklist):
+    length_weak_password = 5
+    length_middle_password = 8
+    length_strong_password = 12
+    phone_pattern = re.compile('\d{5,}')
+    is_phone_in_password = phone_pattern.search(password)
+    is_bad_password = is_password_include_word_from_blacklist(password,
+                                                              passwords_from_blacklist)
+    password_length = len(password)
+    if is_password_in_blacklist(password, passwords_from_blacklist):
+        return 1
+    if password_length < length_weak_password:
         if password.isdigit():
             return 1
         else:
             return 2
-    elif 5 <= len(password) < 8 and (is_password_include_name(password) or
-                                     is_password_include_date(password) or
-                                     is_password_include_words_form_blacklist(password) or
-                                     re_pattern.search(password)):
-        return 3
-    elif (is_password_include_name(password) or
-          is_password_include_date(password) or
-          is_password_include_words_form_blacklist(password) or
-          re_pattern.search(password)):
-        password_strength = 4
+    elif password_length < length_middle_password:
+        if is_phone_in_password or is_bad_password:
+            return 3
+        else:
+            password_strength = 3
+    elif password_length < length_strong_password:
+        if is_phone_in_password or is_bad_password:
+            return 4
+        else:
+            password_strength = 4
     else:
-        password_strength = 6
+        if is_phone_in_password or is_bad_password:
+            return 5
+        else:
+            password_strength = 5
 
     for char in password:
         if char.isdigit():
@@ -75,14 +76,23 @@ def get_password_strength(password):
         if char in password:
             password_strength += 1
             break
+    latin_pattern = re.compile('[a-zA-Z]')
+    cyrillic_pattern = re.compile('[а-яА-Я]')
+    if latin_pattern.search(password) and cyrillic_pattern.search(password):
+        password_strength += 1
     return password_strength
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='''Вычисление сложности
     пароля. Сложность оценивается по шкале от 1 до 10.''')
-    parser.add_argument('--password', '-pass', default='Asd1r$._8765',
+    parser.add_argument('--password', '-pass', default='Qdf1iЯwd$._87',
                         help='пароль для проверки сложности')
+    parser.add_argument('--blacklist', '-bl',
+                        default='10_million_password_list_top_1000.txt',
+                        help='файл, содержащий пароли из черного списка')
     args = parser.parse_args()
-    password_strength = get_password_strength(args.password)
+    passwords_from_blacklist = get_passwords_from_blacklist(args.blacklist)
+    password_strength = get_password_strength(args.password,
+                                              passwords_from_blacklist)
     print('Сложность пароля: %d' % password_strength)
