@@ -5,22 +5,22 @@ import re
 
 def get_passwords_from_blacklist(filepath):
     if not os.path.exists(filepath):
-        return None
+        return []
     with open(filepath) as file_handler:
         return file_handler.readlines()
 
 
-def is_password_in_blacklist(password, blacklist_handler):
+def is_password_in_blacklist(password, blacklist):
     password_in_lower_chars = password.lower()
-    for word in blacklist_handler:
+    for word in blacklist:
         if word.rstrip() == password_in_lower_chars:
             return True
     return False
 
 
-def is_password_include_word_from_blacklist(password, blacklist_handler):
+def is_password_include_word_from_blacklist(password, blacklist):
     password_in_lower_chars = password.lower()
-    for word in blacklist_handler:
+    for word in blacklist:
         if word.rstrip() in password_in_lower_chars:
             return True
     return False
